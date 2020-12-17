@@ -385,4 +385,4 @@ class debugger():
 
     def terminate_process(self, exit_code=0, method='terminateprocess'):
         if not kernel32.TerminateProcess(self.h_process, exit_code):
-            raise print('TerminateProcess({})'.format(exit_code))
+            print('TerminateProcess({})'.format(exit_code))

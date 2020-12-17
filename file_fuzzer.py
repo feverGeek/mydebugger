@@ -124,11 +124,11 @@ class file_fuzzer:
         fd.close()
         test_case = self.test_cases[random.randint(0, len(self.test_cases) - 1)]
         stream_length = len(stream)
-        rand_offset = random.randint(0, stream_length - 1)
+        rand_offset = random.randint(0, stream_length)
         rand_len = random.randint(1, 1000)
         test_case = test_case * rand_len
         fuzz_file = stream[0:rand_offset]
-        fuzz_file += str(test_case)
+        fuzz_file += test_case.encode()
         fuzz_file += stream[rand_offset:]
         fd = open("test.%s" % self.ext, "wb")
         fd.write(fuzz_file)

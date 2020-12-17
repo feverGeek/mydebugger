@@ -1,6 +1,7 @@
 from my_debugger import *
 from my_debugger_defines import *
 import utils
+import smtplib
 import random
 import sys
 import struct
@@ -27,6 +28,11 @@ class file_fuzzer:
         self.running = False
         self.ready = False
         self.test_cases = ['%s%n%s%n%s%n', '\xff', '\x00', 'A']
+
+        # optional
+        self.smtpserver = 'mail.nostarch.com'
+        self.recipients = []
+        self.sender = 'jms@bughunter.ca'
 
     def file_picker(self):
         """
@@ -107,8 +113,8 @@ class file_fuzzer:
     def notify(self):
         crash_message = "From: %s\r\n\r\nTo: \r\n\r\nIteration: %d\n\nOuput:\n\n %s" % (
             self.sender, self.iteration, self.crash)
-        session = smtplib.SMTP(smtpserver)
-        session.sendmail(sender, recipients, crash_message)
+        session = smtplib.SMTP(self.smtpserver)
+        session.sendmail(self.sender, self.recipients, crash_message)
         session.quit()
         return
 
@@ -116,7 +122,7 @@ class file_fuzzer:
         fd = open("test.%s" % self.ext, "rb")
         stream = fd.read()
         fd.close()
-        test_case = self.test_cases[random.randint(0, len(test_cases) - 1)]
+        test_case = self.test_cases[random.randint(0, len(self.test_cases) - 1)]
         stream_length = len(stream)
         rand_offset = random.randint(0, stream_length - 1)
         rand_len = random.randint(1, 1000)

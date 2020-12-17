@@ -1,5 +1,5 @@
-from pydbg import *
-from pydbg.defines import *
+from my_debugger import *
+from my_debugger_defines import *
 import utils
 import random
 import sys
@@ -26,6 +26,7 @@ class file_fuzzer:
         self.dbg = None
         self.running = False
         self.ready = False
+        self.test_cases = ['%s%n%s%n%s%n', '\xff', '\x00', 'A']
 
     def file_picker(self):
         """
@@ -40,7 +41,7 @@ class file_fuzzer:
     def fuzz(self):
         while True:
             if not self.running:
-                self.test_file = self.file_picker()
+                self.test_file = self.file_picker()  # 随机选择文件
                 self.mutate_file()
 
                 pydbg_thread = threading.Thread(target=self.star_debugger)
@@ -59,7 +60,8 @@ class file_fuzzer:
     def star_debugger(self):
         print("[*] Starting debugger for iteration: %d" % self.iteration)
         self.running = True
-        self.dbg = pydbg()
+        # self.dbg = pydbg()
+        self.dbg = debugger()
         self.dbg.set_callback(EXCEPTION_ACCESS_VIOLATION, self.check_accessv)
         pid = self.dbg.load(self.exe_path, "test.%s" % self.ext)
         self.pid = self.dbg.pid

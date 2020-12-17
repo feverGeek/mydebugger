@@ -44,7 +44,8 @@ class debugger():
         if not args:
             ret = kernel32.CreateProcessW(path_to_exe, None, None, None, None, creation_flags, None, None, byref(startupinfo), byref(process_information))
         else:
-            command_line = path_to_exe + args
+            command_line = path_to_exe + " " +args
+            print(command_line)
             ret = kernel32.CreateProcessW(None, command_line, None, None, None, creation_flags, None, None, byref(startupinfo), byref(process_information))
 
         if ret:

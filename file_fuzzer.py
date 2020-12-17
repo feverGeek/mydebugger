@@ -50,9 +50,9 @@ class file_fuzzer:
                 self.test_file = self.file_picker()  # 随机选择文件
                 self.mutate_file()
 
-                pydbg_thread = threading.Thread(target=self.star_debugger)
-                pydbg_thread.setDaemon(0)
-                pydbg_thread.start()
+                mydbg_thread = threading.Thread(target=self.star_debugger)
+                mydbg_thread.setDaemon(0)
+                mydbg_thread.start()
                 while self.pid == None:
                     time.sleep(1)
                 monitor_thread = threading.Thread(target=self.monitor_debugger)

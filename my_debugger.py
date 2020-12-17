@@ -21,14 +21,9 @@ class debugger():
         kernel32.GetSystemInfo(byref(system_info))
         self.page_size = system_info.dwPageSize
         self.guarded_pages = []
-        self.call_back = {
-                "EXCEPTION_ACCESS_VIOLATION": self.default_exception_handler_access_violation,
-                "EXCEPTION_BREAKPOINT": self.default_exception_handler_breakpoint,
-                "EXCEPTION_GUARD_PAGE": self.default_exception_handler_guard_page,
-                "EXCEPTION_SINGLE_STEP": self.default_exception_handler_single_step
-            }
+        self.call_backs = {}
 
-    def load(self, path_to_exe):
+    def load(self, path_to_exe, args=None):
         # dwCreation flag determines how to create the process
         # set creation_flags = CREATE_NEW_CONSOLE if you want
         # to see the calculator GUI
@@ -46,12 +41,21 @@ class debugger():
         # which is just the size of the struct itself
         startupinfo.cb = sizeof(startupinfo)
 
-        if kernel32.CreateProcessW(path_to_exe, None, None, None, None, creation_flags, None, None, byref(startupinfo), byref(process_information)):
+        if not args:
+            ret = kernel32.CreateProcessW(path_to_exe, None, None, None, None, creation_flags, None, None, byref(startupinfo), byref(process_information))
+        else:
+            command_line = path_to_exe + args
+            ret = kernel32.CreateProcessW(None, command_line, None, None, None, creation_flags, None, None, byref(startupinfo), byref(process_information))
+
+        if ret:
             print("[*] We have successfully launched the process!")
             print("[*] PID: %d" % process_information.dwProcessId)
             self.h_process = self.open_process(process_information.dwProcessId)
         else:
             print("[*] Error: 0x%08x." % kernel32.GetLastError())
+
+        self.pid = process_information.dwProcessId
+        return process_information.dwProcessId
 
     def open_process(self, pid):
         """
@@ -101,22 +105,22 @@ class debugger():
 
                 # 检测到访问异常
                 if self.exception == EXCEPTION_ACCESS_VIOLATION:
-                    continue_status = self.call_back['EXCEPTION_ACCESS_VIOLATION']()
+                    continue_status = self.call_backs['EXCEPTION_ACCESS_VIOLATION']()
                     print("Access Violation Detected.")
                     
                 # 检测到 breakpoint (软件断点)
                 elif self.exception == EXCEPTION_BREAKPOINT:
-                    continue_status = self.call_back['EXCEPTION_BREAKPOINT']()
+                    continue_status = self.call_backs['EXCEPTION_BREAKPOINT']()
                     print("SoftWare Breakpoint Detected.")
 
                 # 检测到保护页异常 (内存断点)
                 elif self.exception == EXCEPTION_GUARD_PAGE:
-                    continue_status = self.call_back['EXCEPTION_GUARD_PAGE']()
+                    continue_status = self.call_backs['EXCEPTION_GUARD_PAGE']()
                     print("Guard Page Access Detected.")
 
                 # 检测到单步运行 (硬件断点)
                 elif self.exception == EXCEPTION_SINGLE_STEP:
-                    continue_status = self.call_back['EXCEPTION_SINGLE_STEP']()
+                    continue_status = self.call_backs['EXCEPTION_SINGLE_STEP']()
                     print("Single Stepping.")
 
             # 继续运行 thread
@@ -162,14 +166,7 @@ class debugger():
             return continue_status
 
     def set_callback(self, exception, func):
-        if exception == EXCEPTION_ACCESS_VIOLATION:
-            self.call_back['EXCEPTION_ACCESS_VIOLATION'] = func
-        elif exception == EXCEPTION_BREAKPOINT:
-            self.call_back['EXCEPTION_ACCESS_VIOLATION'] = func
-        elif exception == EXCEPTION_GUARD_PAGE:
-            self.call_back['EXCEPTION_GUARD_PAGE'] = func
-        elif exception == EXCEPTION_SINGLE_STEP:
-            self.call_back['EXCEPTION_SINGLE_STEP'] = func
+        self.call_backs[exception] = func
 
     def read_process_memory(self, address, length):
         """
@@ -385,3 +382,7 @@ class debugger():
         else:
             print("detach fail.")
             return False
+
+    def terminate_process(self, exit_code=0, method='terminateprocess'):
+        if not kernel32.TerminateProcess(self.h_process, exit_code):
+            raise print('TerminateProcess({})'.format(exit_code))

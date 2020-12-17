@@ -21,6 +21,10 @@ class debugger():
         kernel32.GetSystemInfo(byref(system_info))
         self.page_size = system_info.dwPageSize
         self.guarded_pages = []
+		self.call_back = {"EXCEPTION_ACCESS_VIOLATION": self.default_exception_handler_access_violation,
+						  "EXCEPTION_BREAKPOINT": self.default_exception_handler_breakpoint,
+						  "EXCEPTION_GUARD_PAGE": self.default_exception_handler_guard_page,
+						  "EXCEPTION_SINGLE_STEP": self.default_exception_handler_single_step}
 
     def load(self, path_to_exe):
         # dwCreation flag determines how to create the process
@@ -95,26 +99,32 @@ class debugger():
 
                 # 检测到访问异常
                 if self.exception == EXCEPTION_ACCESS_VIOLATION:
+					continue_status = self.call_back['EXCEPTION_ACCESS_VIOLATION']()
                     print("Access Violation Detected.")
                     
                 # 检测到 breakpoint (软件断点)
                 elif self.exception == EXCEPTION_BREAKPOINT:
-                    continue_status = self.exception_handler_breakpoint()
+                    continue_status = self.call_back['EXCEPTION_BREAKPOINT']()
+					print("SoftWare Breakpoint Detected.")
 
-                # 检测到保护页异常
+                # 检测到保护页异常 (内存断点)
                 elif self.exception == EXCEPTION_GUARD_PAGE:
+					continue_status = self.call_back['EXCEPTION_GUARD_PAGE']()
                     print("Guard Page Access Detected.")
 
                 # 检测到单步运行 (硬件断点)
                 elif self.exception == EXCEPTION_SINGLE_STEP:
-                    self.exception_handler_single_step()
+                    continue_status = self.call_back['EXCEPTION_SINGLE_STEP']()
                     print("Single Stepping.")
 
             # 继续运行 thread
             kernel32.ContinueDebugEvent(
                 debug_event.dwProcessId, debug_event.dwThreadId, continue_status)
 
-    def exception_handler_breakpoint(self):
+	def default_exception_handler_access_violation(self):
+		return DBG_CONTINUE
+	
+    def default_exception_handler_breakpoint(self):
         """
         断点异常处理
         """
@@ -129,7 +139,10 @@ class debugger():
             print("[*] Hit user defined breakpoint.")
         return DBG_CONTINUE
 
-    def exception_handler_single_step(self):
+	def default_exception_handler_guard_page(self):
+		return DBG_CONTINUE
+
+    def default_exception_handler_single_step(self):
         if self.context.Dr6 &0x01 and 0 in self.hardware_breakpoints.keys():
             slot = 0
         elif self.context.Dr6 &0x02 and 1 in self.hardware_breakpoints.keys():
@@ -145,6 +158,16 @@ class debugger():
             continue_status = DBG_CONTINUE
             print("[*] Hardware breakpoint removed.")
             return continue_status
+
+	def set_callback(self, exception, func):
+		if exception == EXCEPTION_ACCESS_VIOLATION:
+			self.call_back['EXCEPTION_ACCESS_VIOLATION'] = func
+		elif exception == EXCEPTION_BREAKPOINT:
+			self.call_back['EXCEPTION_ACCESS_VIOLATION'] = func
+		elif exception == EXCEPTION_GUARD_PAGE:
+			self.call_back['EXCEPTION_GUARD_PAGE'] = func
+		elif exception == EXCEPTION_SINGLE_STEP:
+			self.call_back['EXCEPTION_SINGLE_STEP'] = func
 
     def read_process_memory(self, address, length):
         """

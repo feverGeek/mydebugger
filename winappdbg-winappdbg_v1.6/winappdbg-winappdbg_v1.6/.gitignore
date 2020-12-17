@@ -1,8 +1,0 @@
-*.pyc
-.idea
-.vscode
-build
-dist
-html
-pdf
-MANIFEST
